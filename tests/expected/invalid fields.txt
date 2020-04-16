@@ -1,0 +1,2 @@
+Invalid fields: foo
+Should be in: name, id, date

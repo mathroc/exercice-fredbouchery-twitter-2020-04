@@ -1,0 +1,43 @@
+{
+	"invalid parameter": {
+		"file": "gist.csv",
+		"options": ["--yaml"]
+	},
+	"mini": {
+		"file": "gist.csv",
+		"options": []
+	},
+	"pretty": {
+		"file": "gist.csv",
+		"options": ["--pretty"]
+	},
+	"invalid fields": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--fields", "id;name;foo"]
+	},
+	"fields": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--fields", "name;id"]
+	},
+	"reorder fields": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--fields", "date;id"]
+	},
+	"duplicated fields": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--fields", "date;id;date"],
+		"comment": "following occurences of a same field are ignored"
+	},
+	"invalid aggregate field": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--aggregate", "foo"]
+	},
+	"simple aggregate": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--aggregate", "name"]
+	},
+	"aggregate with aggregate field": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--aggregate", "name", "--fields", "id;name;date"]
+	}
+}

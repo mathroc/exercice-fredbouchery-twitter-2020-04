@@ -1,0 +1,2 @@
+Invalid aggregate: foo
+Should be one of: name, id, date

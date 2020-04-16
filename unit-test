@@ -1,0 +1,172 @@
+#!/bin/env php
+<?php
+
+chdir(__DIR__);
+
+array_shift($argv);
+
+$stopOnFailure = false;
+$diff = false;
+$up = false;
+$filter = "";
+
+while (($arg = array_shift($argv)) !== null) {
+    if ($arg === "--diff") {
+        $diff = true;
+    } else if ($arg === "--up") {
+        $up = true;
+    } else if ($arg === "--stop-on-failure") {
+        $stopOnFailure = true;
+    } else if ($arg === "--filter") {
+        $filter = array_shift($argv);
+    } else {
+        echo "Unknown option: $arg", PHP_EOL;
+        exit(254);
+    }
+}
+
+runTestSuite($stopOnFailure, $diff, $up, $filter);
+
+/**
+ * @return never
+ */
+function runTestSuite(bool $stopOnFailure, bool $diff, bool $up, string $filter): void {
+    $total = 0;
+    $failures = [];
+
+    $inputs = glob("tests/inputs/*");
+    $suite = json_decode(file_get_contents("tests/suite.json"), true);
+
+    foreach ($suite as $test => ["file" => $file, "options" => $options]) {
+    	if ($filter !== "" && strpos($test, $filter) === false) {
+    		continue;
+    	}
+
+        $csv2jsonCommand = escapeCommand("./csv2json", "tests/inputs/$file", ...$options);
+
+        $expectedResultFile = "tests/expected/$test.txt";
+        touch($expectedResultFile);
+
+        $patch = bashExec(escapeCommand(
+            "diff",
+            "-Naur",
+            "--label", $expectedResultFile,
+            "--label", "./csv2json ...",
+            // "--color=always",
+            $expectedResultFile,
+        ) . " <($csv2jsonCommand 2>&1)");
+
+        $total++;
+
+        if ($patch !== "") {
+            $failures[] = $test;
+
+            if ($diff) {
+                echo "Output of $csv2jsonCommand does not match content of $expectedResultFile:", PHP_EOL;
+                echo $patch, PHP_EOL;
+            }
+
+            if ($up) {
+                $patch = escapeshellarg($patch);
+                echo bashExec(escapeCommand("patch", $expectedResultFile). " <(echo $patch)");
+            }
+
+            if ($stopOnFailure) {
+                summary($total, $failures);
+            }
+        }
+    }
+
+    summary($total, $failures);
+}
+
+function bashExec(string $command): string
+{
+    $bashCommand = bash($command);
+    return `$bashCommand 2>&1` ?? "";
+}
+
+function bash(string $command): string
+{
+    return escapeCommand("bash", "-c", $command);
+}
+
+function escapeCommand(string ...$arguments): string {
+    return implode(" ", array_map("escapeshellarg", $arguments));
+}
+
+/**
+ * @return never
+ */
+function summary(int $total, array $failures): void
+{
+    echo "Tests executed: $total", PHP_EOL, PHP_EOL;
+
+    $failuresCount = count($failures);
+
+    if ($failuresCount > 0) {
+        echo "Tests KO: $failuresCount", PHP_EOL;
+
+        foreach ($failures as $test) {
+            echo "* $test", PHP_EOL;
+        }
+
+        exit($failuresCount);
+    }
+
+    echo "All tests are successful !", PHP_EOL;
+
+    exit(0);
+}
+
+function printDiff(string $output, string $expected): void {
+    echo "\e[0;31m--- expected\e[0m", PHP_EOL;
+    echo "\e[0;32m+++ output\e[0m", PHP_EOL;
+    foreach(diff(explode("\n", $output), explode("\n", $expected)) as $line) {
+        if (!is_array($line)) {
+            echo "  $line", PHP_EOL;
+            continue;
+        }
+
+        if (!empty($line["deleted"])) {
+            echo "\e[0;31m- ", implode("", $line["deleted"]), "\e[0m", PHP_EOL;
+        }
+
+        if (!empty($line["inserted"])) {
+            echo "\e[0;32m+ ", implode("", $line["inserted"]), "\e[0m", PHP_EOL;
+        }
+    }
+}
+
+/**
+ * @param array<string> $expected
+ * @param array<string> $output
+ * @return array<string>
+ */
+function diff(array $output, array $expected): array {
+    $matrix = [];
+    $maxlen = 0;
+
+    foreach ($expected as $expectedIndex => $expectedValue) {
+        $keys = array_keys($output, $expectedValue);
+
+        foreach ($keys as $index) {
+            $matrix[$expectedIndex][$index] = ($matrix[$expectedIndex - 1][$index - 1] ?? 0) + 1;
+
+            if ($matrix[$expectedIndex][$index] > $maxlen) {
+                $maxlen = $matrix[$expectedIndex][$index];
+                $omax = $expectedIndex + 1 - $maxlen;
+                $nmax = $index + 1 - $maxlen;
+            }
+        }
+    }
+
+    if ($maxlen == 0) {
+        return [["deleted" => $expected, "inserted" => $output]];
+    }
+
+    return array_merge(
+        diff(array_slice($expected, 0, $omax), array_slice($output, 0, $nmax)),
+        array_slice($output, $nmax, $maxlen),
+        diff(array_slice($expected, $omax + $maxlen), array_slice($output, $nmax + $maxlen)));
+}
