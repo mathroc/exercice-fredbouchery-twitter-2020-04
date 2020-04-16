@@ -1,5 +1,13 @@
 #!/bin/env php
 <?php declare(strict_types=1);
 
-// require_once "bin/procedural.php";
-require_once "bin/oo.php";
+$implementations = ["oo", "procedural"];
+
+$implementation = getenv("IMPLEMENTATION") ?? "oo";
+
+if (!in_array($implementation, $implementations)) {
+	echo "Invalid implementation: $implementation", PHP_EOL;
+	exit(1);
+}
+
+require_once "bin/$implementation.php";

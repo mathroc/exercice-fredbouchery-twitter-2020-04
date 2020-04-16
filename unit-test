@@ -9,6 +9,7 @@ $stopOnFailure = false;
 $diff = false;
 $up = false;
 $filter = "";
+$implementations = $existingImplementations = ["procedural", "oo"];
 
 while (($arg = array_shift($argv)) !== null) {
     if ($arg === "--diff") {
@@ -19,60 +20,73 @@ while (($arg = array_shift($argv)) !== null) {
         $stopOnFailure = true;
     } else if ($arg === "--filter") {
         $filter = array_shift($argv);
+    } else if ($arg === "--implementations") {
+        $implementationDiff = array_diff($implementations = explode(",", array_shift($argv)), $existingImplementations);
+
+        if (!empty($implementationDiff)) {
+            echo "Unknown implementations: ", implode(", ", $implementationDiff), PHP_EOL;
+            exit(254);
+        }
     } else {
         echo "Unknown option: $arg", PHP_EOL;
         exit(254);
     }
 }
 
-runTestSuite($stopOnFailure, $diff, $up, $filter);
+runTestSuite($implementations, $stopOnFailure, $diff, $up, $filter);
 
 /**
  * @return never
  */
-function runTestSuite(bool $stopOnFailure, bool $diff, bool $up, string $filter): void {
+function runTestSuite(array $implementations, bool $stopOnFailure, bool $diff, bool $up, string $filter): void {
     $total = 0;
     $failures = [];
 
     $inputs = glob("tests/inputs/*");
     $suite = json_decode(file_get_contents("tests/suite.json"), true);
 
-    foreach ($suite as $test => ["file" => $file, "options" => $options]) {
-    	if ($filter !== "" && strpos($test, $filter) === false) {
-    		continue;
-    	}
-
-        $csv2jsonCommand = escapeCommand("./csv2json", "tests/inputs/$file", ...$options);
-
-        $expectedResultFile = "tests/expected/$test.txt";
-        touch($expectedResultFile);
-
-        $patch = bashExec(escapeCommand(
-            "diff",
-            "-Naur",
-            "--label", $expectedResultFile,
-            "--label", "./csv2json ...",
-            // "--color=always",
-            $expectedResultFile,
-        ) . " <($csv2jsonCommand 2>&1)");
-
-        $total++;
-
-        if ($patch !== "") {
-            $failures[] = $test;
-
-            if ($diff) {
-                echo "Output of $csv2jsonCommand does not match content of $expectedResultFile:", PHP_EOL;
-                echo $patch, PHP_EOL;
+    foreach ($implementations as $implementation) {
+        foreach ($suite as $test => ["file" => $file, "options" => $options]) {
+            if ($filter !== "" && strpos($test, $filter) === false) {
+                continue;
             }
 
-            if ($up) {
-                $patch = escapeshellarg($patch);
-                echo bashExec(escapeCommand("patch", $expectedResultFile). " <(echo $patch)");
-            }
+            $csv2jsonCommand = "IMPLEMENTATION=$implementation " . escapeCommand(
+                "./csv2json",
+                "tests/inputs/$file",
+                ...$options,
+            );
 
-            if ($stopOnFailure) {
-                summary($total, $failures);
+            $expectedResultFile = "tests/expected/$test.txt";
+            touch($expectedResultFile);
+
+            $patch = bashExec(escapeCommand(
+                "diff",
+                "-Naur",
+                "--label", $expectedResultFile,
+                "--label", "./csv2json ...",
+                // "--color=always",
+                $expectedResultFile,
+            ) . " <($csv2jsonCommand 2>&1)");
+
+            $total++;
+
+            if ($patch !== "") {
+                $failures[] = "$implementation: $test";
+
+                if ($diff) {
+                    echo "Output of $csv2jsonCommand does not match content of $expectedResultFile:", PHP_EOL;
+                    echo $patch, PHP_EOL;
+                }
+
+                if ($up) {
+                    $patch = escapeshellarg($patch);
+                    echo bashExec(escapeCommand("patch", $expectedResultFile). " <(echo $patch)");
+                }
+
+                if ($stopOnFailure) {
+                    summary($total, $failures);
+                }
             }
         }
     }
