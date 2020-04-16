@@ -160,7 +160,7 @@ final class MaskedCSV implements CSV, IteratorAggregate {
         $this->fields = $fields;
     }
 
-    public function fromFields(CSV $csv, array $fields): self
+    public static function fromFields(CSV $csv, array $fields): self
     {
         return new self($csv, $fields);
     }
@@ -320,7 +320,9 @@ final class ResourceOutput implements Output {
 
     public function __construct($resource)
     {
-        assert(is_ressource($resource));
+        if (!is_resource($resource)) {
+            throw new InvalidArgumentException("not a resource");
+        }
 
         $this->resource = $resource;
     }

@@ -1,0 +1,7 @@
+language: php
+php:
+  - '7.4'
+script: ./unit-test --diff --implementations $IMPLEMENTATION
+env:
+  - IMPLEMENTATION=oo
+  - IMPLEMENTATION=procedural
