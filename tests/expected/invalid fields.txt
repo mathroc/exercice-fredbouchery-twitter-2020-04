@@ -1,2 +1,1 @@
-Invalid fields: foo
-Should be in: name, id, date
+Invalid fields (foo) not in (name, id, date)

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 function process(string $filePath, ?string $fields, ?string $aggregate): Iterator
 {
@@ -42,8 +42,7 @@ function aggregator(?string $aggregate, array $header, ?array &$fields): array {
 
     if ($aggregate !== null) {
         if (!in_array($aggregate, $header)) {
-            echo "Invalid aggregate: $aggregate", PHP_EOL;
-            echo "Should be one of: ", implode(", ", $header), PHP_EOL;
+            echo "Invalid aggregate '$aggregate' not in (", implode(", ", $header), ")", PHP_EOL;
             exit(1);
         }
 
@@ -83,8 +82,7 @@ function transformer(?array $fields, array $header): callable {
     $diff = $fields === null ? [] : array_diff($fields, $header);
 
     if (!empty($diff)) {
-        echo "Invalid fields: ", implode(", ", $diff), PHP_EOL;
-        echo "Should be in: ", implode(", ", $header), PHP_EOL;
+        echo "Invalid fields (", implode(", ", $diff), ") not in (", implode(", ", $header), ")", PHP_EOL;
         exit(1);
     }
 

@@ -3,6 +3,14 @@
 		"file": "gist.csv",
 		"options": ["--yaml"]
 	},
+	"absent file": {
+		"file": "absent.csv",
+		"options": []
+	},
+	"not a file": {
+		"file": "",
+		"options": []
+	},
 	"mini": {
 		"file": "gist.csv",
 		"options": []
@@ -39,5 +47,9 @@
 	"aggregate with aggregate field": {
 		"file": "gist.csv",
 		"options": ["--pretty", "--aggregate", "name", "--fields", "id;name;date"]
+	},
+	"aggregate without aggregate field": {
+		"file": "gist.csv",
+		"options": ["--pretty", "--aggregate", "name", "--fields", "date"]
 	}
 }

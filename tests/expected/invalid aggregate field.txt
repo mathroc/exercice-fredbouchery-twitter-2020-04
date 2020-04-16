@@ -1,2 +1,1 @@
-Invalid aggregate: foo
-Should be one of: name, id, date
+Invalid aggregate 'foo' not in (name, id, date)
